@@ -195,15 +195,6 @@ class App(tk.Tk):
         self.botao_alterar_preco_produto = tk.Button(self.frame_cadastro, text="Alterar Preço Produto", command=self.janela_alterar_preco_produto, bg="#ff9800", fg="white", font=("Arial", 12, "bold"), relief=tk.RAISED, padx=20, pady=10)
         self.botao_alterar_preco_produto.grid(row=0, column=2, padx=10)
 
-        self.impressora_selecionada = tk.StringVar()
-        self.impressora_selecionada.set("Windows") # Valor padrão
-        self.radio_usb = tk.Radiobutton(self.frame_botoes, text="USB", variable=self.impressora_selecionada, value="USB")
-        self.radio_rede = tk.Radiobutton(self.frame_botoes, text="Rede", variable=self.impressora_selecionada, value="Rede")
-        self.radio_windows = tk.Radiobutton(self.frame_botoes, text="Windows", variable=self.impressora_selecionada, value="Windows")
-        self.radio_usb.grid(row=0, column=1)
-        self.radio_rede.grid(row=0, column=2)
-        self.radio_windows.grid(row=0,column=3)
-
         self.imprimir_button = tk.Button(self.frame_botoes, text="Imprimir Recibo", command=self.imprimir_recibo)
         self.imprimir_button.grid(row=0, column=0)
 
@@ -278,48 +269,48 @@ class App(tk.Tk):
         self.recibo_text.delete("1.0", tk.END)
         self.recibo_text.insert(tk.END, recibo)
 
-        try:
-            if self.impressora_selecionada.get() == "USB":
-                self.imprimir_usb(recibo)
-            elif self.impressora_selecionada.get() == "Rede":
-                self.imprimir_rede(recibo)
-            else:
-                self.imprimir_windows(recibo)
-            messagebox.showinfo("Sucesso", "Recibo enviado para impressão!")
-            self.limpar_campos()
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao imprimir recibo: {e}")
+        impressoras = [impressora[2] for impressora in win32print.EnumPrinters(2)]
+        janela_impressoras = tk.Toplevel(self)
+        janela_impressoras.title("Selecionar Impressora")
+        lista_impressoras = tk.Listbox(janela_impressoras, height=10, width=50)
+        for impressora in impressoras:
+            lista_impressoras.insert(tk.END, impressora)
+        lista_impressoras.pack(padx=10, pady=10)
 
-    def imprimir_usb(self, recibo):
-        try:
-            printer = Usb(0x0483, 0x7023)
-            printer.text(recibo)
-            printer.cut()
-        except Exception as e:
-            messagebox.showerror("Erro", f"Impressora USB não encontrada ou com problemas: {e}")
+        def confirmar_selecao():
+            try:
+                impressora_selecionada = lista_impressoras.get(lista_impressoras.curselection())
+                self.imprimir_windows(self.recibo_text.get("1.0", tk.END), impressora_selecionada)
+                janela_impressoras.destroy()
+                messagebox.showinfo("Sucesso", "Recibo enviado para impressão!")
+                self.limpar_campos()
+            except IndexError:
+                messagebox.showerror("Erro", "Selecione uma impressora.")
+            except Exception as e: # Adicionado tratamento de erro aqui
+                messagebox.showerror("Erro", f"Erro ao imprimir recibo: {e}")
+                janela_impressoras.destroy() # Fechar a janela em caso de erro
 
-    def imprimir_rede(self, recibo):
-        try:
-            import socket
-            ip = "192.168.1.100"  # Substitua pelo IP da sua impressora
-            porta = 9100  # Substitua pela porta da sua impressora
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect((ip, porta))
-            s.sendall(recibo.encode())
-            s.close()
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao imprimir na impressora de rede: {e}")
+        tk.Button(janela_impressoras, text="Confirmar", command=confirmar_selecao).pack(pady=5)
 
-    def imprimir_windows(self, recibo):
+    def imprimir_windows(self, recibo, impressora_selecionada):
         hDC = win32ui.CreateDC()
-        hDC.CreatePrinterDC()
+        hDC.CreatePrinterDC(impressora_selecionada)  # Use a impressora selecionada
         hDC.StartDoc("Recibo")
         hDC.StartPage()
         hDC.SetMapMode(win32con.MM_TWIPS)
         hDC.TextOut(100, -100, recibo)
         hDC.EndPage()
         hDC.EndDoc()
-        hDC.SelectPrinter()
+        # Não precisa selecionar a impressora novamente aqui
+
+    def selecionar_impressora(self):
+        impressoras = [impressora[2] for impressora in win32print.EnumPrinters(2)]
+        janela_impressoras = tk.Toplevel(self)
+        janela_impressoras.title("Selecionar Impressora")
+        lista_impressoras = tk.Listbox(janela_impressoras, height=10, width=50)
+        for impressora in impressoras:
+            lista_impressoras.insert(tk.END, impressora)
+        lista_impressoras.pack(padx=10, pady=10)
 
     def limpar_campos(self):
         self.cliente_combobox.set("")
