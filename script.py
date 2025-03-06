@@ -11,6 +11,9 @@ from datetime import datetime
 import win32print
 import win32ui
 import win32con
+import calendar
+from tkcalendar import Calendar
+from datetime import datetime, date
 
 class Recibo:
     def __init__(self, cliente, endereco, telefone, itens, taxa):
@@ -204,7 +207,118 @@ class App(tk.Tk):
         self.recibo_text = tk.Text(self.frame_recibo, height=10)
         self.recibo_text.grid(row=0, column=0, sticky="nsew")
 
+        self.balanceamento_button = tk.Button(self.frame_cadastro, text="Balanceamento", command=self.janela_balanceamento, bg="#9c27b0", fg="white", font=("Arial", 12, "bold"), relief=tk.RAISED, padx=20, pady=10)
+        self.balanceamento_button.grid(row=0, column=3, padx=10) # Coluna 3
+
         self.itens = []
+
+    def janela_balanceamento(self):
+        janela = tk.Toplevel(self)
+        janela.title("Balanceamento de Vendas")
+        janela.geometry("600x400")
+
+        style = ttk.Style()
+        style.configure("TLabelFrame.Label", font=("Arial", 12, "bold"))
+
+        frame_datas = ttk.LabelFrame(janela, text="Período")
+        frame_datas.pack(padx=10, pady=10, fill=tk.X)
+
+        tk.Label(frame_datas, text="Data de Início:").grid(row=0, column=0, padx=5, pady=5)
+        self.data_inicio_entry = ttk.Entry(frame_datas)
+        self.data_inicio_entry.grid(row=0, column=1, padx=5, pady=5)
+
+        tk.Label(frame_datas, text="Data de Fim:").grid(row=1, column=0, padx=5, pady=5)
+        self.data_fim_entry = ttk.Entry(frame_datas)
+        self.data_fim_entry.grid(row=1, column=1, padx=5, pady=5)
+
+        # Definir datas padrão para o mês atual
+        hoje = date.today()
+        primeiro_dia_mes = date(hoje.year, hoje.month, 1)
+        ultimo_dia_mes = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+
+        self.data_inicio_entry.insert(0, primeiro_dia_mes.strftime("%d/%m/%Y"))
+        self.data_fim_entry.insert(0, ultimo_dia_mes.strftime("%d/%m/%Y"))
+
+        tk.Button(janela, text="Calcular", command=self.calcular_balanceamento).pack(pady=10)
+
+        self.tree = ttk.Treeview(janela, columns=("Data", "Vendas", "Total"), show="headings")
+        self.tree.heading("Data", text="Data")
+        self.tree.heading("Vendas", text="Vendas")
+        self.tree.heading("Total", text="Total")
+        self.tree.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
+
+        self.total_label = ttk.Label(janela, text="Total Geral: R$ 0.00", font=("Arial", 12, "bold"))
+        self.total_label.pack(pady=5)
+
+        tk.Button(frame_datas, text="...", command=lambda: self.selecionar_data(self.data_inicio_entry)).grid(row=0, column=2, padx=5)
+        tk.Button(frame_datas, text="...", command=lambda: self.selecionar_data(self.data_fim_entry)).grid(row=1, column=2, padx=5)
+
+        self.data_inicio_entry.bind("<KeyRelease>", lambda event, entry=self.data_inicio_entry: self.formatar_data(event, entry))
+        self.data_fim_entry.bind("<KeyRelease>", lambda event, entry=self.data_fim_entry: self.formatar_data(event, entry))
+
+    def calcular_balanceamento(self):
+        data_inicio_str = self.data_inicio_entry.get()
+        data_fim_str = self.data_fim_entry.get()
+
+        try:
+            data_inicio = datetime.strptime(data_inicio_str, "%d/%m/%Y")
+            data_fim = datetime.strptime(data_fim_str, "%d/%m/%Y")
+        except ValueError:
+            messagebox.showerror("Erro", "Formato de data inválido (DD/MM/AAAA).")
+            return
+
+        if data_inicio > data_fim:
+            messagebox.showerror("Erro", "Data de início deve ser anterior à data de fim.")
+            return
+
+        conexao = sqlite3.connect("recibos.db")
+        cursor = conexao.cursor()
+
+        cursor.execute("""
+            SELECT data, COUNT(*), SUM(total)
+            FROM recibos
+            WHERE data BETWEEN ? AND ?
+            GROUP BY data
+        """, (data_inicio, data_fim))
+        resultados = cursor.fetchall()
+
+        self.tree.delete(*self.tree.get_children())
+        total_geral = 0
+        for resultado in resultados:
+            data_str = datetime.strftime(datetime.strptime(resultado[0], "%Y-%m-%d"), "%d/%m/%Y")
+            vendas = resultado[1]
+            total = resultado[2]
+            self.tree.insert("", tk.END, values=(data_str, vendas, f"R$ {total:.2f}"))
+            total_geral += total
+
+        self.total_label.config(text=f"Total Geral: R$ {total_geral:.2f}")
+
+        conexao.close()
+
+    def formatar_data(self, event, entry):
+        texto = entry.get()
+        texto = ''.join(filter(str.isdigit, texto))  # Remove caracteres não numéricos
+        if len(texto) > 8:
+            texto = texto[:8]  # Limita a 8 dígitos
+        if len(texto) >= 2:
+            texto = texto[:2] + '/' + texto[2:]
+        if len(texto) >= 5:
+            texto = texto[:5] + '/' + texto[5:]
+        entry.delete(0, tk.END)
+        entry.insert(0, texto)
+
+    def selecionar_data(self, entry):
+        def definir_data():
+            data_selecionada = calendario.get_date()
+            entry.delete(0, tk.END)
+            entry.insert(0, data_selecionada.strftime("%d/%m/%Y"))
+            janela_calendario.destroy()
+
+        janela_calendario = tk.Toplevel(self)
+        calendario = Calendar(janela_calendario, date_pattern="dd/mm/yyyy")
+        calendario.pack(padx=10, pady=10)
+
+        tk.Button(janela_calendario, text="OK", command=definir_data).pack(pady=5)
 
     def selecionar_cliente(self, event):
         nome_cliente = self.cliente_combobox.get()
