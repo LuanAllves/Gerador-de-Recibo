@@ -42,7 +42,7 @@ class Recibo:
         return recibo
 
 def criar_banco_dados():
-    conexao = sqlite3.connect("recibos.db")
+    conexao = sqlite3.connect("recibos.db", detect_types=0) # Desabilitando a detecção de tipos
     cursor = conexao.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS clientes (
@@ -59,6 +59,20 @@ def criar_banco_dados():
             preco REAL
         )
     """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS recibos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente TEXT,
+            endereco TEXT,
+            telefone TEXT,
+            itens TEXT,
+            taxa REAL,
+            total REAL,
+            data TEXT
+        )
+    """)
+
     conexao.commit()
     conexao.close()
 
@@ -271,24 +285,26 @@ class App(tk.Tk):
             messagebox.showerror("Erro", "Data de início deve ser anterior à data de fim.")
             return
 
-        conexao = sqlite3.connect("recibos.db")
+        conexao = sqlite3.connect("recibos.db", detect_types=0)
         cursor = conexao.cursor()
 
         cursor.execute("""
-            SELECT data, COUNT(*), SUM(total)
+            SELECT DATE(data), COUNT(*), SUM(total)
             FROM recibos
-            WHERE data BETWEEN ? AND ?
-            GROUP BY data
+            WHERE DATE(data) BETWEEN ? AND ?
+            GROUP BY DATE(data)
         """, (data_inicio, data_fim))
         resultados = cursor.fetchall()
 
         self.tree.delete(*self.tree.get_children())
         total_geral = 0
         for resultado in resultados:
-            data_str = datetime.strftime(datetime.strptime(resultado[0], "%Y-%m-%d"), "%d/%m/%Y")
+            data_str = resultado[0]
+            data_obj = datetime.strptime(data_str, "%Y-%m-%d").date() # Agora o formato corresponde.
+            data_str_formatada = data_obj.strftime("%d/%m/%Y")
             vendas = resultado[1]
             total = resultado[2]
-            self.tree.insert("", tk.END, values=(data_str, vendas, f"R$ {total:.2f}"))
+            self.tree.insert("", tk.END, values=(data_str_formatada, vendas, f"R$ {total:.2f}"))
             total_geral += total
 
         self.total_label.config(text=f"Total Geral: R$ {total_geral:.2f}")
@@ -308,17 +324,21 @@ class App(tk.Tk):
         entry.insert(0, texto)
 
     def selecionar_data(self, entry):
-        def definir_data():
-            data_selecionada = calendario.get_date()
-            entry.delete(0, tk.END)
-            entry.insert(0, data_selecionada.strftime("%d/%m/%Y"))
-            janela_calendario.destroy()
+        def definir_data(calendario, janela_calendario, entry):
+            data_selecionada_str = calendario.get_date()
+            try:
+                data_selecionada = datetime.strptime(data_selecionada_str, "%d/%m/%Y").date()
+                entry.delete(0, tk.END)
+                entry.insert(0, data_selecionada.strftime("%d/%m/%Y"))
+                janela_calendario.destroy()
+            except ValueError:
+                messagebox.showerror("Erro", "Formato de data inválido.")
 
         janela_calendario = tk.Toplevel(self)
         calendario = Calendar(janela_calendario, date_pattern="dd/mm/yyyy")
         calendario.pack(padx=10, pady=10)
 
-        tk.Button(janela_calendario, text="OK", command=definir_data).pack(pady=5)
+        tk.Button(janela_calendario, text="OK", command=lambda: definir_data(calendario, janela_calendario, entry)).pack(pady=5)
 
     def selecionar_cliente(self, event):
         nome_cliente = self.cliente_combobox.get()
@@ -406,16 +426,33 @@ class App(tk.Tk):
 
         tk.Button(janela_impressoras, text="Confirmar", command=confirmar_selecao).pack(pady=5)
 
+        # Inserir dados no banco de dados
+        conexao = sqlite3.connect("recibos.db", detect_types=0)
+        cursor = conexao.cursor()
+        data_atual = datetime.now().isoformat() # Convertendo para ISO 8601
+        cursor.execute("""
+            INSERT INTO recibos (cliente, endereco, telefone, itens, taxa, total, data)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (cliente, endereco, telefone, str(self.itens), taxa, total + taxa, data_atual))
+        conexao.commit()
+        conexao.close()
+
     def imprimir_windows(self, recibo, impressora_selecionada):
         hDC = win32ui.CreateDC()
-        hDC.CreatePrinterDC(impressora_selecionada)  # Use a impressora selecionada
+        hDC.CreatePrinterDC(impressora_selecionada)
         hDC.StartDoc("Recibo")
         hDC.StartPage()
         hDC.SetMapMode(win32con.MM_TWIPS)
-        hDC.TextOut(100, -100, recibo)
+
+        linhas = recibo.split('\n')  # Divide o recibo em linhas
+        y = -100  # Posição vertical inicial
+
+        for linha in linhas:
+            hDC.TextOut(100, y, linha)
+            y -= 200  # Ajuste a posição vertical para a próxima linha
+
         hDC.EndPage()
         hDC.EndDoc()
-        # Não precisa selecionar a impressora novamente aqui
 
     def selecionar_impressora(self):
         impressoras = [impressora[2] for impressora in win32print.EnumPrinters(2)]
