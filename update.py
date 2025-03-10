@@ -55,14 +55,15 @@ if os.path.exists(backup_system_dir):
 
 if not os.path.exists(system_dir):
     os.makedirs(system_dir)
-    
+
 shutil.copytree(system_dir, backup_system_dir, dirs_exist_ok=True, ignore=ignore_git)
 print("Backup do sistema feito com sucesso.")
 
 # Recompile o executável
 os.chdir(update_dir)
 capabilities_json_path = r'C:\Users\joaom\AppData\Local\Programs\Python\Python313\Lib\site-packages\escpos\capabilities.json'
-subprocess.check_call(['pyinstaller', '--noconsole', '--name=Sistema_Recibo', '--add-data=' + capabilities_json_path + ';escpos', 'script.py'])
+capabilities_json_win_path = r'C:\Users\joaom\AppData\Local\Programs\Python\Python313\Lib\site-packages\escpos\capabilities_win.json'
+subprocess.check_call(['pyinstaller', '--noconsole', '--name=Sistema_Recibo', '--add-data=' + capabilities_json_path + ';escpos', '--add-data=' + capabilities_json_win_path + ';escpos', 'script.py'])
 print("Executável recompilado com sucesso.")
 
 # Copie o executável para o diretório do sistema
