@@ -182,5 +182,19 @@ def obter_recibos_por_periodo(data_inicio, data_fim):
         if conexao:
             conexao.close()
 
+def inserir_cliente(nome, endereco, telefone):
+    if not nome:
+        raise ValueError("O nome do cliente não pode estar vazio.")
+
+    # Adicione outras validações conforme necessário
+
+    try:
+        with sqlite3.connect('pdv.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO clientes (nome, endereco, telefone) VALUES (?, ?, ?)", (nome, endereco, telefone))
+            conn.commit()
+    except sqlite3.Error as e:
+        print(f"Erro ao inserir cliente: {e}")
+
 if __name__ == "__main__":
     criar_banco_dados()
