@@ -10,7 +10,7 @@ def verificar_atualizacao():
     except FileNotFoundError:
         versao_atual = "0.0.0"
 
-    url_servidor = "https://github.com/LuanAllves/Gerador-de-Recibo"
+    url_servidor = "https://github.com/LuanAllves/Gerador-de-Recibo/blob/main/atualizador/version.json"
 
     try:
         resposta = requests.get(url_servidor)
