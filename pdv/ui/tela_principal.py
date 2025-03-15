@@ -145,27 +145,6 @@ class TelaPrincipal(tk.Tk):
         preco_entry = tk.Entry(janela_cadastro_produto)
         preco_entry.grid(row=1, column=1)
 
-        # Adicionar um botão "Salvar" para salvar os dados do produto
-        def salvar_produto():
-            nome = nome_entry.get()
-            preco = preco_entry.get()
-
-            try:
-                if not nome:
-                    raise ValueError("O nome do produto não pode estar vazio.")
-                if not preco:
-                    raise ValueError("O preço do produto não pode estar vazio.")
-                if not preco.replace('.', '', 1).isdigit(): # permite apenas um ponto decimal
-                    raise ValueError("O preço do produto deve ser um número válido.")
-
-                banco_de_dados.inserir_produto(nome, preco)
-                messagebox.showinfo("Sucesso", "Produto cadastrado com sucesso!")
-                janela_cadastro_produto.destroy()
-            except ValueError as e:
-                messagebox.showerror("Erro", str(e))
-            except Exception as e:
-                messagebox.showerror("Erro", f"Erro ao cadastrar produto: {e}")
-
     def alterar_preco_produto(self):
         # Criar uma nova janela para alterar o preço do produto
         janela_alterar_preco = tk.Toplevel(self)
@@ -199,5 +178,4 @@ class TelaPrincipal(tk.Tk):
             self.endereco_entry.insert(0, cliente_dados['endereco'])
             self.telefone_entry.delete(0, tk.END)
             self.telefone_entry.insert(0, cliente_dados)
-
    
