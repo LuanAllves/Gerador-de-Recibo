@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 import pdv.modelos.database as banco_de_dados
-import pdv.util.printer as impressora
 from tkinter import messagebox
 
 class TelaPrincipal(tk.Tk):
@@ -199,5 +198,4 @@ class TelaPrincipal(tk.Tk):
             self.endereco_entry.insert(0, cliente_dados['endereco'])
             self.telefone_entry.delete(0, tk.END)
             self.telefone_entry.insert(0, cliente_dados)
-
    

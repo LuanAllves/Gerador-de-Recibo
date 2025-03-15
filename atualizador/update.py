@@ -1,7 +1,6 @@
 import requests
 import json
 import subprocess
-import os
 
 def verificar_atualizacao():
     try:
