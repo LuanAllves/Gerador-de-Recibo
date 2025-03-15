@@ -1,6 +1,5 @@
 import win32print
 import win32ui
-import win32con
 from datetime import datetime
 
 class Recibo:
