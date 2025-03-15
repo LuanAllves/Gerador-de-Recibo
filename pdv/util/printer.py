@@ -22,7 +22,7 @@ class Recibo:
         recibo_text += f"Total: R$ {total + self.taxa_entrega}\n"
         recibo_text += f"\nData: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"
         return recibo_text
-    
+
     def imprimir_recibo(recibo_text, limpar_campos):
         try:
             impressora_padrao = win32print.GetDefaultPrinter()

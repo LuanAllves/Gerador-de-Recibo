@@ -128,7 +128,7 @@ class TelaPrincipal(tk.Tk):
                 messagebox.showerror("Erro", str(e))
             except Exception as e:
                 messagebox.showerror("Erro", f"Erro ao cadastrar cliente: {e}")
-        
+
         salvar_button = tk.Button(janela_cadastro_cliente, text="Salvar", command=salvar_cliente)
 
     def cadastrar_produto(self):
@@ -199,5 +199,4 @@ class TelaPrincipal(tk.Tk):
             self.endereco_entry.insert(0, cliente_dados['endereco'])
             self.telefone_entry.delete(0, tk.END)
             self.telefone_entry.insert(0, cliente_dados)
-
    
